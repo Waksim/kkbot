@@ -1,3 +1,5 @@
+# apps/cards/services/db_updater.py
+
 import asyncio
 import httpx
 from pathlib import Path
@@ -43,20 +45,31 @@ async def _download_image(client: httpx.AsyncClient, card: Card, icon_name: str)
 
 async def _update_tags(card: Card, tag_names: List[str]) -> None:
     """Асинхронно обновляет теги для указанной карты."""
-    await card.tags.aclear()
-    for tag_name in tag_names:
-        tag, _ = await Tag.objects.aget_or_create(name=tag_name)
-        await card.tags.aadd(tag)
+    # Используем `aset` для эффективности в асинхронном контексте
+    current_tags = {tag.name async for tag in card.tags.all()}
+    tags_to_add_names = set(tag_names) - current_tags
+    tags_to_remove_names = current_tags - set(tag_names)
+
+    if tags_to_add_names:
+        tags_to_add = [await Tag.objects.aget_or_create(name=tag_name) for tag_name in tags_to_add_names]
+        await card.tags.aadd(*[tag for tag, created in tags_to_add])
+
+    if tags_to_remove_names:
+        tags_to_remove = Tag.objects.filter(name__in=tags_to_remove_names)
+        await card.tags.aremove(*[tag async for tag in tags_to_remove])
 
 
+# ИСПРАВЛЕНИЕ: Используем transaction.atomic как декоратор.
+# Это правильный способ обеспечить атомарность для всей асинхронной функции.
 @transaction.atomic
 async def run_card_update() -> List[str]:
     """
     Запускает полный процесс обновления базы данных карт и возвращает журнал выполнения.
+    Вся функция выполняется в одной транзакции благодаря декоратору @transaction.atomic.
     """
     logs: List[str] = []
-    async with httpx.AsyncClient() as client:
-        try:
+    try:
+        async with httpx.AsyncClient() as client:
             logs.append("[INFO] Начало процесса обновления базы данных...")
             # 1. Получаем данные
             logs.append(f"  - Загрузка данных с {GCG_DATA_URL}")
@@ -75,59 +88,57 @@ async def run_card_update() -> List[str]:
             processed_card_ids: Set[int] = set()
 
             # --- Проход 1: Создание и обновление карт ---
-            async with transaction.atomic():
-                for card_id_str, data in all_cards_data.items():
-                    card_id = int(card_id_str)
-                    processed_card_ids.add(card_id)
+            # ИСПРАВЛЕНИЕ: Убрали `async with transaction.atomic()`. Вся функция уже атомарна.
+            for card_id_str, data in all_cards_data.items():
+                card_id = int(card_id_str)
+                processed_card_ids.add(card_id)
 
-                    card_name = data.get('EN') or f"Unknown Card {card_id}"
-                    defaults = {
-                        'card_type': data.get('type', 'Action'),
-                        'name': card_name,
-                        'title': data.get('title', ''),
-                        'description': data.get('desc', '').replace('\\n', '\n'),
-                        'cost_info': data.get('cost', []),
-                        'hp': data.get('hp'),
-                        'is_new': card_id in new_card_ids,
-                    }
+                card_name = data.get('EN') or f"Unknown Card {card_id}"
+                defaults = {
+                    'card_type': data.get('type', 'Action'),
+                    'name': card_name,
+                    'title': data.get('title', ''),
+                    'description': data.get('desc', '').replace('\\n', '\n'),
+                    'cost_info': data.get('cost', []),
+                    'hp': data.get('hp'),
+                    'is_new': card_id in new_card_ids,
+                }
 
-                    card, created = await Card.objects.aupdate_or_create(card_id=card_id, defaults=defaults)
+                card, created = await Card.objects.aupdate_or_create(card_id=card_id, defaults=defaults)
 
-                    if created:
-                        logs.append(f"[CREATE] Создана карта: {card.name} ({card.card_id})")
-                    else:
-                        logs.append(f"[UPDATE] Обновлена карта: {card.name} ({card.card_id})")
+                log_action = "[CREATE]" if created else "[UPDATE]"
+                logs.append(f"{log_action} Карта: {card.name} ({card.card_id})")
 
-                    # Обновление тегов
-                    tag_names = data.get('tag', [])
-                    await _update_tags(card, tag_names)
-                    if tag_names:
-                        logs.append(f"  - Добавлены теги для {card.name}: {', '.join(tag_names)}")
+                # Обновление тегов
+                tag_names = data.get('tag', [])
+                await _update_tags(card, tag_names)
+                if tag_names:
+                    logs.append(f"  - Теги для {card.name}: {', '.join(tag_names)}")
 
-                    # Скачивание изображения
-                    if icon_name := data.get('icon'):
-                        log_msg = await _download_image(client, card, icon_name)
-                        logs.append(log_msg)
-                    else:
-                        logs.append(f"[WARNING] У карты {card.name} ({card.card_id}) нет 'icon', изображение не скачано.")
+                # Скачивание изображения
+                if icon_name := data.get('icon'):
+                    log_msg = await _download_image(client, card, icon_name)
+                    logs.append(log_msg)
+                else:
+                    logs.append(f"[WARNING] У карты {card.name} ({card.card_id}) нет 'icon', изображение не скачано.")
 
-                    # Сохраняем ID для связывания
-                    if related_id := data.get('relate'):
-                        related_cards_to_link.append((card.card_id, int(related_id)))
+                # Сохраняем ID для связывания
+                if related_id := data.get('relate'):
+                    related_cards_to_link.append((card.card_id, int(related_id)))
 
             # --- Проход 2: Создание связей ---
             logs.append("[INFO] Обновление связей между картами...")
-            async with transaction.atomic():
-                for card_id, related_id in related_cards_to_link:
-                    try:
-                        card = await Card.objects.aget(pk=card_id)
-                        related_card_obj = await Card.objects.aget(pk=related_id)
-                        if card.related_card != related_card_obj:
-                            card.related_card = related_card_obj
-                            await card.asave(update_fields=['related_card'])
-                            logs.append(f"  - Связана карта {card.name} -> {related_card_obj.name}")
-                    except Card.DoesNotExist:
-                        logs.append(f"[WARNING] Не удалось связать {card_id} с {related_id}: карта не найдена.")
+            # ИСПРАВЛЕНИЕ: Убрали `async with transaction.atomic()`.
+            for card_id, related_id in related_cards_to_link:
+                try:
+                    card = await Card.objects.aget(pk=card_id)
+                    related_card_obj = await Card.objects.aget(pk=related_id)
+                    if card.related_card != related_card_obj:
+                        card.related_card = related_card_obj
+                        await card.asave(update_fields=['related_card'])
+                        logs.append(f"  - Связана карта {card.name} -> {related_card_obj.name}")
+                except Card.DoesNotExist:
+                    logs.append(f"[WARNING] Не удалось связать {card_id} с {related_id}: карта не найдена.")
 
             # --- Проход 3: Удаление устаревших карт ---
             stale_cards = Card.objects.exclude(card_id__in=processed_card_ids)
@@ -136,11 +147,14 @@ async def run_card_update() -> List[str]:
                 logs.append(f"[DELETE] Найдено и удалено {count} устаревших карт.")
                 await stale_cards.adelete()
 
-        except httpx.HTTPStatusError as e:
-            logs.append(f"[ERROR] HTTP Ошибка: {e.response.status_code} при запросе к {e.request.url}")
-        except Exception as e:
-            logs.append(f"[CRITICAL] Непредвиденная ошибка: {e}")
-        else:
-            logs.append("[SUCCESS] База данных успешно обновлена!")
+    except httpx.HTTPStatusError as e:
+        logs.append(f"[ERROR] HTTP Ошибка: {e.response.status_code} при запросе к {e.request.url}")
+        # В случае ошибки транзакция откатится автоматически благодаря декоратору
+    except Exception as e:
+        logs.append(f"[CRITICAL] Непредвиденная ошибка: {e}")
+        # Транзакция также будет отменена
+        raise # Поднимаем исключение дальше, чтобы увидеть traceback
+    else:
+        logs.append("[SUCCESS] База данных успешно обновлена!")
 
     return logs

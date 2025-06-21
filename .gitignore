@@ -1,0 +1,17 @@
+# Docker
+.env
+docker-compose.override.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django
+db.sqlite3
+media/
+static/
+
+# IDE
+.idea/
+.vscode/

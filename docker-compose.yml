@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tcg_postgres_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ИЗМЕНЕНИЕ: сервис 'app' переименован в 'web'
+  web:
+    build: .
+    container_name: tcg_django_web
+    # Этот сервис выполняет миграции и запускает веб-сервер
+    command: >
+      bash -c "python manage.py migrate &&
+               python manage.py create_superuser &&
+               python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # НОВЫЙ СЕРВИС: для телеграм-бота
+  bot:
+    build: .
+    container_name: tcg_telegram_bot
+    # Этот сервис просто запускает бота
+    command: python manage.py startbot
+    volumes:
+      - .:/app
+      # media здесь не нужна, но и не мешает
+      - ./media:/app/media
+    env_file:
+      - .env
+    depends_on:
+      # Бот зависит от готовности базы данных
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -14,11 +14,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # ИЗМЕНЕНИЕ: сервис 'app' переименован в 'web'
   web:
     build: .
     container_name: tcg_django_web
-    # Этот сервис выполняет миграции и запускает веб-сервер
+    # Этот сервис выполняет миграции и запускает веб-сервер для админ-панели.
     command: >
       bash -c "python manage.py migrate &&
                python manage.py create_superuser &&
@@ -34,20 +33,19 @@ services:
       db:
         condition: service_healthy
 
-  # НОВЫЙ СЕРВИС: для телеграм-бота
+  # Сервис для телеграм-бота.
   bot:
     build: .
     container_name: tcg_telegram_bot
-    # Этот сервис просто запускает бота
+    # Этот сервис запускает бота в отдельном процессе.
     command: python manage.py startbot
     volumes:
       - .:/app
-      # media здесь не нужна, но и не мешает
       - ./media:/app/media
     env_file:
       - .env
     depends_on:
-      # Бот зависит от готовности базы данных
+      # Бот зависит от готовности базы данных.
       db:
         condition: service_healthy
 

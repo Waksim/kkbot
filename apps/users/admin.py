@@ -43,7 +43,8 @@ class TelegramUserAdmin(admin.ModelAdmin):
     inlines = [DeckInline, UserActivityInline]
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        # Оптимизация: предзагружаем количество колод
+        # `prefetch_related` используется для оптимизации: одним запросом получаем все связанные
+        # колоды, чтобы вычисляемое поле `deck_count` не делало N+1 запросов к БД.
         return super().get_queryset(request).prefetch_related('decks')
 
 

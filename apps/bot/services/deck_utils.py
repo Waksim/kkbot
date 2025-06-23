@@ -12,21 +12,22 @@ RESONANCE_TAGS: Set[str] = {
 }
 
 
-# ОПТИМИЗАЦИЯ: Функция стала синхронной (`def` вместо `async def`).
-# Она больше не выполняет асинхронных операций.
 def calculate_resonances(character_cards: List[Card]) -> List[str]:
     """
     Вычисляет элементальные, региональные и фракционные резонансы
-    на основе карт персонажей. Работает синхронно с предзагруженными данными.
+    на основе карт персонажей.
+
+    Функция намеренно синхронная, так как она работает с данными,
+    которые уже должны быть предзагружены в память (через `prefetch_related`),
+    и не выполняет I/O-операций.
     """
     if not character_cards or len(character_cards) < 2:
         return []
 
     all_tags: List[str] = []
     for card in character_cards:
-        # ОПТИМИЗАЦИЯ: Вместо асинхронного запроса к БД в цикле (`async for`),
-        # мы используем уже загруженные через prefetch_related теги.
-        # Это синхронная операция, которая не делает дополнительных запросов.
+        # Используем предзагруженные через `prefetch_related` теги.
+        # Это синхронная операция, которая не требует дополнительных запросов к БД в цикле.
         tags = [tag.name for tag in card.tags.all()]
         all_tags.extend(tags)
 
@@ -37,5 +38,5 @@ def calculate_resonances(character_cards: List[Card]) -> List[str]:
         if tag_counter.get(tag, 0) >= 2:
             resonances.append(tag)
 
-    # Сортируем для предсказуемого порядка на изображении и в тестах
+    # Сортируем для предсказуемого порядка на изображении и в тестах.
     return sorted(resonances)

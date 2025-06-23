@@ -8,7 +8,6 @@ class Command(BaseCommand):
     help = "Запускает телеграм-бота"
 
     def handle(self, *args, **options):
-        # Настройка логирования
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -16,10 +15,11 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Запуск телеграм-бота..."))
 
-        # Настройка Django для асинхронного контекста
+        # `django.setup()` необходим для инициализации Django и доступа к моделям перед запуском бота.
         django.setup()
 
-        from apps.bot.main import main  # Импортируем здесь, чтобы Django успел настроиться
+        # Импортируем `main` здесь, чтобы Django успел полностью настроиться.
+        from apps.bot.main import main
 
         try:
             asyncio.run(main())

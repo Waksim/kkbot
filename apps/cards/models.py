@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from pathlib import Path
 
+
 class Tag(models.Model):
     """Модель для тегов карт (Элемент, Оружие, Регион и т.д.)."""
     name = models.CharField(
@@ -19,8 +20,10 @@ class Tag(models.Model):
     def __str__(self) -> str:
         return self.name
 
+
 class Card(models.Model):
     """Основная модель для игровой карты."""
+
     class CardType(models.TextChoices):
         CHARACTER = 'Character', 'Персонаж'
         ACTION = 'Action', 'Действие'
@@ -85,7 +88,10 @@ class Card(models.Model):
 
     @property
     def local_image_path(self) -> Path:
-        """Свойство для получения локального пути к изображению."""
+        """
+        Вычисляемое свойство для получения полного локального пути к файлу изображения карты.
+        Изображения не хранятся в БД, только на диске.
+        """
         return settings.MEDIA_ROOT / 'card_images' / f"{self.card_id}.webp"
 
     def __str__(self) -> str:

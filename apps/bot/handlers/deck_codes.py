@@ -17,8 +17,8 @@ from apps.bot.services.image_generator import create_deck_image
 from apps.users.services import log_user_activity
 
 router = Router(name="deck-codes-router")
-DECK_CODE_REGEX = re.compile(r'([A-Za-z0-9+/]{20,}=*)')
-MAX_CODES_PER_MESSAGE = 20  # Ограничение для предотвращения спама
+DECK_CODE_REGEX = re.compile(r'([^.,\'\"\s\n\t\r]{68})')
+MAX_CODES_PER_MESSAGE = 20  # Ограничение на количество кодов в одном сообщении для предотвращения спама
 
 HELP_TEXT_PRIVATE = (
     f"👋 Привет! Я бот для работы с колодами <b>Genshin Impact TCG</b>.\n\n"
@@ -99,7 +99,6 @@ async def process_message_with_codes(message: Message, text_to_parse: str):
         }
     )
 
-    # Логируем получение сообщения
     await log_user_activity(
         user,
         UserActivity.ActivityType.MESSAGE_RECEIVED,

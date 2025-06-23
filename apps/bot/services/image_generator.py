@@ -12,7 +12,6 @@ BG_SIZE = (801, 1430)
 CHAR_CARD_SIZE = (150, 250)
 ACTION_CARD_SIZE = (105, 168)
 Y_CHAR = 80
-# ИЗМЕНЕНИЕ: Опускаем резонансы ниже для лучшего центрирования
 Y_RESONANCE = Y_CHAR + CHAR_CARD_SIZE[1] + 55
 Y_ACTION_START = Y_RESONANCE + 60
 CHAR_SPACING = 25
@@ -21,9 +20,8 @@ ACTION_Y_SPACING = 15
 CARDS_PER_ROW = 6
 RESONANCE_TEXT_COLOR = (80, 56, 30)
 NO_RESONANCE_TEXT = "No Resonance"
-DEFAULT_RESONANCE_COLOR = (128, 128, 128)  # Цвет для неизвестных резонансов
+DEFAULT_RESONANCE_COLOR = (128, 128, 128)
 
-# ИЗМЕНЕНИЕ: Возвращаем словарь с цветами
 RESONANCE_COLORS = {
     # Элементы
     "Cryo": (155, 203, 255), "Pyro": (255, 128, 88), "Hydro": (0, 112, 255),
@@ -37,14 +35,10 @@ RESONANCE_COLORS = {
     "Monster": (160, 80, 45), "Hilichurl": (200, 180, 140),
 }
 
-# Пути к ассетам
 ASSETS_DIR: Path = settings.BASE_DIR / "core" / "static" / "bot"
 BG_PATH = ASSETS_DIR / "images" / "background.png"
 BORDER_PATH = ASSETS_DIR / "images" / "border.png"
 FONT_PATH = ASSETS_DIR / "fonts" / "gi_font.ttf"
-
-
-# Папки и словари с иконками/эмодзи удалены
 
 
 def _get_font(size: int) -> ImageFont.FreeTypeFont:
@@ -88,7 +82,7 @@ def create_deck_image(
     draw = ImageDraw.Draw(bg_image)
     center_x = bg_image.width // 2
 
-    # 2. Отрисовка карт персонажей
+    # 1. Отрисовка карт персонажей
     unique_character_cards = list({card.card_id: card for card in character_cards}.values())
     total_chars_width = len(unique_character_cards) * CHAR_CARD_SIZE[0] + (
                 len(unique_character_cards) - 1) * CHAR_SPACING
@@ -97,7 +91,7 @@ def create_deck_image(
         x = start_x_char + i * (CHAR_CARD_SIZE[0] + CHAR_SPACING)
         _paste_card(bg_image, char_card, (x, Y_CHAR), CHAR_CARD_SIZE, border_image)
 
-    # 3. Отрисовка резонансов (метод с цветными кружками)
+    # 2. Отрисовка резонансов
     font_res = _get_font(22)
     spacing_res = 35
     circle_text_gap = 12
@@ -124,7 +118,6 @@ def create_deck_image(
         y_pos = Y_RESONANCE
 
         if item["color"]:
-            # Координаты для кружка
             y_circle_start = y_pos - circle_diameter // 2
             x_circle_end = current_x + circle_diameter
             y_circle_end = y_circle_start + circle_diameter
@@ -140,7 +133,7 @@ def create_deck_image(
         draw.text((current_x, y_pos), item["text"], font=font_res, fill=RESONANCE_TEXT_COLOR, anchor="lm")
         current_x += item["width"] - (circle_diameter + circle_text_gap if item["color"] else 0) + spacing_res
 
-    # 4. Отрисовка карт действий
+    # 3. Отрисовка карт действий
     total_row_width = CARDS_PER_ROW * ACTION_CARD_SIZE[0] + (CARDS_PER_ROW - 1) * ACTION_X_SPACING
     start_x_action = center_x - total_row_width // 2
     for i, action_card in enumerate(action_cards):
@@ -150,7 +143,7 @@ def create_deck_image(
         y = Y_ACTION_START + row * (ACTION_CARD_SIZE[1] + ACTION_Y_SPACING)
         _paste_card(bg_image, action_card, (x, y), ACTION_CARD_SIZE, border_image)
 
-    # 5. Сохранение в байтовый поток
+    # 4. Сохранение в байтовый поток
     image_bytes = io.BytesIO()
     bg_image.convert("RGB").save(image_bytes, format='JPEG', quality=90)
     image_bytes.seek(0)

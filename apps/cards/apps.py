@@ -2,6 +2,7 @@ from django.apps import AppConfig
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,9 @@ class CardsConfig(AppConfig):
 
             if image_path.exists() and image_path.is_file():
                 try:
-                    image_path.unlink()
+                    os.remove(image_path)
                     logger.info(f"Успешно удален файл изображения: {image_path}")
                 except OSError as e:
                     logger.error(f"Ошибка при удалении файла изображения {image_path}: {e}", exc_info=True)
             else:
-                logger.warning(f"Файл изображения для удаленной карты '{instance.name}' не найден по пути: {image_path}")
+                logger.warning(f"Файл изображения для удаленной карты не найден по пути: {image_path}")

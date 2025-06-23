@@ -12,6 +12,9 @@ db.sqlite3
 media/
 /staticfiles/
 
-# IDE
+# IDE configuration files
 .idea/
 .vscode/
+
+# macOS specific files
+.DS_Store

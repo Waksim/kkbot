@@ -12,7 +12,7 @@ urlpatterns = [
 ]
 
 # Настраиваем раздачу медиа-файлов (загруженных изображений)
-# через Django-сервер в режиме отладки (DEBUG=True).
-# В production-среде этим должен заниматься веб-сервер (например, Nginx).
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# через Django-сервер. В production-среде этим должен заниматься
+# веб-сервер (например, Nginx), но для данного проекта
+# раздача через Django является допустимым упрощением.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

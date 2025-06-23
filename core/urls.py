@@ -1,10 +1,10 @@
 """
 URL configuration for core project.
 """
-from django.conf import settings
 from django.contrib import admin
-from django.urls import path, include, re_path
-from django.views.static import serve
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -12,8 +12,7 @@ urlpatterns = [
 ]
 
 # Настраиваем раздачу медиа-файлов (загруженных изображений)
-# через Django-сервер.
-
-urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-]
+# через Django-сервер. В production-среде этим должен заниматься
+# веб-сервер (например, Nginx), но для данного проекта
+# раздача через Django является допустимым упрощением.
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

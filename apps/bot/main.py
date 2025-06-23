@@ -17,16 +17,14 @@ async def main() -> None:
     if not settings.ADMIN_ID:
         logging.warning("ADMIN_ID не указан в .env. Админ-команды не будут работать.")
 
-    # Правильная инициализация Bot с параметрами по умолчанию
+    # Инициализируем бота с `DefaultBotProperties`, чтобы задать `parse_mode` по умолчанию для всех запросов.
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
 
-    # Подключаем роутеры
     dp.include_router(admin_commands.admin_router)
     dp.include_router(deck_codes.router)
 
-    # Запускаем бота
     await dp.start_polling(bot)

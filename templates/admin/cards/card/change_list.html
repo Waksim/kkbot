@@ -1,0 +1,23 @@
+{% extends "admin/change_list.html" %}
+{# Загружаем теги `admin_urls` для корректной работы фильтров в ссылках (`add_preserved_filters`) #}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+  {% if has_add_permission %}
+    <li>
+      {% url cl.opts.app_label|add:'_'|add:cl.opts.model_name|add:'_add' as add_url %}
+      <a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">
+        {% blocktrans with cl.opts.verbose_name as name %}Добавить {{ name }}{% endblocktrans %}
+      </a>
+    </li>
+  {% endif %}
+
+  {# НАЧАЛО: Кастомная кнопка обновления карт по API #}
+  <li>
+      <a href="update-from-api/" class="addlink" style="background-color: #7084a4;">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGZpbGw9IndoaXRlIiBkPSJNMTEgMTloMnYySDExem0zLjUtNy41TDggNi4yN3YxMC40NmwxLjc1LTEuMjJsMS43NSAxLjIzdjQuMDFoMkwxNyAyMC4yMXYtMy4xOWwxLjc1IDEuMjJMMjIgMTYuNzN2LTEwLjVsLTYuNSA0LjY0ek0xNCAxMy4zNGw0LTIuODZWOGwtNCAyLjg2ek0xMCAxMy4zNFY4bDQgMi44NlYxMy4zNHpNNi41IDE4LjVsMy0yLjE1di00LjVMNi41IDkuN3ptMTUtNy44MmwtNCAyLjg2VjE1bDQgMi44NVYxMC42OHpNMTIgMiwyIDguNWwxMCA2LjVMMjIgOC41eiIvPjwvc3ZnPg==" alt="icon" style="height: 1.2em; vertical-align: text-bottom; margin-right: 0.3em;"/>
+          Обновить карты из API
+      </a>
+  </li>
+  {# КОНЕЦ: Кастомная кнопка обновления карт по API #}
+{% endblock %}

@@ -25,7 +25,6 @@ def _save_decks_in_transaction(decks_to_save: List[Deck]) -> None:
     Декоратор @transaction.atomic обеспечивает, что все операции внутри
     будут выполнены в одной транзакции.
     """
-    # Используем синхронный bulk_create, так как вся функция синхронная
     Deck.objects.bulk_create(decks_to_save, batch_size=500)
 
 
@@ -112,20 +111,19 @@ class Command(BaseCommand):
                 self.style.SUCCESS("\nВсе колоды из файла уже есть в базе данных. Обновление не требуется."))
             return
 
-        # ИЗМЕНЕНИЕ: Правильный вызов атомарной операции
         try:
             await _save_decks_in_transaction(decks_to_create)
             self.stdout.write(self.style.SUCCESS(f"\nУспешно импортировано {len(decks_to_create)} новых колод."))
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"\nОшибка при массовом добавлении в БД: {e}"))
-            # В случае ошибки, выводим статистику до ошибки
+            # В случае ошибки выводим промежуточную статистику для отладки.
             self.stdout.write("-" * 30)
             self.stdout.write(f"Всего обработано строк в файле: {len(csv_data)}")
             self.stdout.write(f"Пропущено (уже в БД): {len(existing_codes)}")
             self.stdout.write(f"Подготовлено к добавлению: {len(decks_to_create)}")
             return
 
-        # Финальный отчет
+        # Выводим итоговую статистику по результатам импорта.
         self.stdout.write("-" * 30)
         self.stdout.write(f"Всего обработано строк в файле: {len(csv_data)}")
         self.stdout.write(f"Пропущено (уже в БД): {len(existing_codes)}")

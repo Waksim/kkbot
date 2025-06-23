@@ -29,8 +29,6 @@ async def decode_deck_code(code: str) -> Tuple[Optional[DecodedDeck], Optional[s
             )
             response.raise_for_status()
             data = response.json()
-            # ИСПРАВЛЕНИЕ: Удаляем отладочный вывод
-            # print(repr(data))
 
             if data.get("retcode") != 0 or not data.get("data"):
                 error_message = data.get("message", "Неизвестная ошибка API.")

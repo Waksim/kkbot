@@ -26,13 +26,13 @@ class Command(BaseCommand):
 
     Примеры использования:
     1. Убедитесь, что база данных карт заполнена:
-       docker-compose exec app python manage.py populate_db
+       docker-compose exec web python manage.py populate_db
 
     2. Запуск с тестовой колодой по умолчанию:
-       docker-compose exec app python manage.py generate_test_image
+       docker-compose exec web python manage.py generate_test_image
 
     3. Запуск с конкретным кодом колоды:
-       docker-compose exec app python manage.py generate_test_image ADDQyv4PBLEQCM4QCxDQC9kQCxGxDLUMDCEBCN4QDNECDPYQDEAA
+       docker-compose exec web python manage.py generate_test_image ADDQyv4PBLEQCM4QCxDQC9kQCxGxDLUMDCEBCN4QDNECDPYQDEAA
     """
     help = "Генерирует тестовое изображение для кода колоды и сохраняет его в 'media/test_deck_image.jpg'."
 
@@ -55,9 +55,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Выполнение прервано пользователем."))
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Произошла критическая ошибка: {e}"))
-            # Для отладки можно добавить полный traceback
-            # import traceback
-            # traceback.print_exc()
 
 
     async def ahandle(self, *args, **options):
@@ -70,13 +67,12 @@ class Command(BaseCommand):
 
         if deck_code_arg:
             self.stdout.write(self.style.SUCCESS(f"Обработка указанного кода колоды: {deck_code_arg}"))
-            # Для работы get_or_create_deck нужен пользователь. Создадим/получим тестового.
+            # Для вызова `get_or_create_deck` требуется объект TelegramUser. Создадим или получим тестового.
             user, _ = await TelegramUser.objects.aget_or_create(
                 user_id=0,
                 defaults={'first_name': 'Test Image Generator'}
             )
 
-            # Получаем колоду из БД или через API Hoyolab
             deck_obj, error_message = await get_or_create_deck(deck_code_arg, user)
 
             if error_message:
@@ -89,7 +85,7 @@ class Command(BaseCommand):
             character_ids = deck_obj.character_card_ids
             action_ids = deck_obj.action_card_ids
         else:
-            # Используем данные из тестового набора, чтобы не зависеть от API
+            # Используем данные из `test_data`, чтобы команда не зависела от доступности внешнего API.
             test_case = DECK_TEST_CASES[0]
             deck_code_arg = test_case.deck_code
             self.stdout.write(
@@ -100,7 +96,6 @@ class Command(BaseCommand):
 
         # --- Общая логика для обоих случаев ---
 
-        # 1. Получаем полные объекты карт из нашей БД
         self.stdout.write("  - Загрузка объектов карт из локальной БД...")
         character_cards = await get_cards_from_ids_with_duplicates(character_ids)
         action_cards = await get_cards_from_ids_with_duplicates(action_ids)
@@ -114,18 +109,17 @@ class Command(BaseCommand):
             return
 
         self.stdout.write("  - Вычисление элементальных резонансов...")
-        # ИЗМЕНЕНИЕ: вызов стал синхронным
+        # Резонансы вычисляются синхронно, так как все необходимые данные (карты и теги) уже загружены в память.
         resonances = calculate_resonances(character_cards)
         self.stdout.write(f"  - Обнаружены резонансы: {resonances or 'Нет'}")
 
-        # 2. Генерируем изображение
         self.stdout.write("  - Генерация изображения...")
-        # ОПТИМИЗАЦИЯ: Выносим блокирующую операцию в отдельный поток
+        # `create_deck_image` — это ресурсоемкая операция (работа с Pillow),
+        # поэтому выносим ее в отдельный поток, чтобы не блокировать event loop.
         image_bytes = await asyncio.to_thread(
             create_deck_image, character_cards, action_cards, resonances
         )
 
-        # 3. Сохраняем изображение в файл
         output_dir: Path = settings.MEDIA_ROOT
         output_dir.mkdir(parents=True, exist_ok=True)  # Создаем папку /media, если ее нет
         output_path = output_dir / 'test_deck_image.jpg'

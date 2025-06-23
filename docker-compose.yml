@@ -6,24 +6,25 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
       - .env
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD", "psql", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}", "-c", "SELECT 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   web:
     build: .
     container_name: tcg_django_web
+    # Этот сервис выполняет миграции и запускает веб-сервер для админ-панели.
     command: >
       bash -c "python manage.py migrate &&
-               python manage.py collectstatic --no-input &&
                python manage.py create_superuser &&
                python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
       - ./media:/app/media
-      - ./staticfiles:/app/staticfiles
     ports:
       - "8000:8000"
     env_file:
@@ -32,9 +33,11 @@ services:
       db:
         condition: service_healthy
 
+  # Сервис для телеграм-бота.
   bot:
     build: .
     container_name: tcg_telegram_bot
+    # Этот сервис запускает бота в отдельном процессе.
     command: python manage.py startbot
     volumes:
       - .:/app
@@ -42,6 +45,7 @@ services:
     env_file:
       - .env
     depends_on:
+      # Бот зависит от готовности базы данных.
       db:
         condition: service_healthy
 

@@ -20,11 +20,14 @@ services:
     # Этот сервис выполняет миграции и запускает веб-сервер для админ-панели.
     command: >
       bash -c "python manage.py migrate &&
+               python manage.py collectstatic --no-input &&
                python manage.py create_superuser &&
                python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
       - ./media:/app/media
+      # Добавим volume для staticfiles, чтобы они не терялись между перезапусками
+      - ./staticfiles:/app/staticfiles
     ports:
       - "8000:8000"
     env_file:

@@ -38,20 +38,21 @@ class Card(models.Model):
         db_index=True,
         verbose_name="Тип карты"
     )
-    name = models.CharField(
-        max_length=255,
-        db_index=True,
-        verbose_name="Название"
+    # Заменяем старые поля на новые, делая их все nullable для единообразия
+    name_en = models.CharField(
+        max_length=255, db_index=True, verbose_name="Название (EN)", null=True, blank=True
     )
-    title = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Подзаголовок"
+    name_ru = models.CharField(
+        max_length=255, db_index=True, verbose_name="Название (RU)", null=True, blank=True
     )
-    description = models.TextField(
-        blank=True,
-        verbose_name="Описание"
+    title_en = models.CharField(
+        max_length=255, verbose_name="Подзаголовок (EN)", null=True, blank=True
     )
+    title_ru = models.CharField(
+        max_length=255, verbose_name="Подзаголовок (RU)", null=True, blank=True
+    )
+    description_en = models.TextField(verbose_name="Описание (EN)", null=True, blank=True)
+    description_ru = models.TextField(verbose_name="Описание (RU)", null=True, blank=True)
     cost_info = models.JSONField(
         default=list,
         verbose_name="Информация о стоимости"
@@ -95,4 +96,5 @@ class Card(models.Model):
         return settings.MEDIA_ROOT / 'card_images' / f"{self.card_id}.webp"
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.card_id})"
+        # Отображаем английское имя, если оно есть, иначе русское
+        return f"{self.name_en or self.name_ru} ({self.card_id})"

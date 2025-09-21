@@ -16,7 +16,6 @@ from django.urls import path
 from django.conf import settings
 from django.utils.html import format_html
 from django_select2.forms import Select2MultipleWidget
-from modeltranslation.admin import TabbedTranslationAdmin
 
 from .models import Card, Tag
 from .services.db_updater import run_card_update
@@ -47,7 +46,7 @@ class CardAdminForm(forms.ModelForm):
 
 
 @admin.register(Card)
-class CardAdmin(TabbedTranslationAdmin):
+class CardAdmin(ModelAdmin):
     form = CardAdminForm
     list_display = ('image_preview', 'card_id', 'name_en', 'name_ru', 'card_type', 'display_tags', 'is_new')
     list_display_links = ('card_id', 'name_en', 'name_ru',)
@@ -57,6 +56,13 @@ class CardAdmin(TabbedTranslationAdmin):
     list_per_page = 30
     readonly_fields = ('card_id', 'image_preview_large')
     actions = ('export_as_excel',)
+    fieldsets = (
+        ("Основная информация (EN)", {"fields": ('name_en', 'title_en', 'description_en')}),
+        ("Основная информация (RU)", {"fields": ('name_ru', 'title_ru', 'description_ru')}),
+        ("Общие данные", {"fields": ('card_id', 'card_type', 'is_new', 'cost_info', 'hp')}),
+        ("Изображение", {"fields": ('image_preview_large', 'upload_image')}),
+        ("Связи и теги", {"fields": ('related_card', 'tags')}),
+    )
     change_list_template = "admin/cards/card/change_list.html"
 
     @admin.action(description='Export selected cards to Excel for translation')

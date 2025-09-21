@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div>
+    <h1>{% trans 'Import Translations from Excel' %}</h1>
+    <p>{% trans 'Upload an Excel file (.xlsx) with translations. The file should have the following columns: card_id, name_ru, title_ru, description_ru.' %}</p>
+
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <p>
+            <input type="submit" value="{% trans 'Upload and Preview Changes' %}">
+        </p>
+    </form>
+</div>
+{% endblock %}

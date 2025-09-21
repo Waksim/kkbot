@@ -1,0 +1,60 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div>
+    <h1>{% trans 'Confirm Translation Changes' %}</h1>
+
+    {% if errors %}
+        <div class="errors">
+            <h2>{% trans 'Errors Found' %}:</h2>
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if updates %}
+        <p>{% trans 'The following changes will be applied. Please review them carefully.' %}</p>
+        <form action="" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="apply_changes" value="1">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Card ID</th>
+                        <th>Card Name (EN)</th>
+                        <th>Field</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for update in updates %}
+                        {% for change in update.changes %}
+                            <tr>
+                                <td>{{ update.card_id }}</td>
+                                <td>{{ update.name }}</td>
+                                <td>{{ change.field }}</td>
+                                <td><pre>{{ change.old }}</pre></td>
+                                <td><pre>{{ change.new }}</pre></td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <p>
+                <input type="submit" class="default" value="{% trans 'Confirm & Apply Changes' %}">
+                <a href="../" class="button">{% trans 'Cancel' %}</a>
+            </p>
+        </form>
+    {% else %}
+        <p>{% trans 'No changes detected.' %}</p>
+        <a href="../" class="button">{% trans 'Back' %}</a>
+    {% endif %}
+</div>
+{% endblock %}

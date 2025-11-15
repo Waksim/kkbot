@@ -3,6 +3,7 @@
 import asyncio
 import httpx
 import logging
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple
 
@@ -31,6 +32,30 @@ NEW_CARDS_URL = "https://api.hakush.in/gi/new.json"      # Список ID но�
 IMAGE_BASE_URL = "https://api.hakush.in/gi/UI/"
 # Локальная директория для сохранения изображений.
 IMAGE_DIR = settings.MEDIA_ROOT / 'card_images'
+CARD_IMAGE_OVERRIDES_DIR = settings.BASE_DIR / 'data' / 'card_image_overrides'
+IMAGE_OVERRIDES = {
+    312041: '312041.webp',
+}
+
+
+def _apply_image_overrides(card_ids: Set[int]) -> None:
+    """Copies local image overrides into the media directory when available."""
+    if not card_ids:
+        return
+
+    for card_id, filename in IMAGE_OVERRIDES.items():
+        if card_id not in card_ids:
+            continue
+
+        source_path = CARD_IMAGE_OVERRIDES_DIR / filename
+        destination_path = IMAGE_DIR / f"{card_id}.webp"
+
+        if not source_path.exists():
+            logger.warning("Override image not found: %s", source_path)
+            continue
+
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_path, destination_path)
 
 
 # --- Асинхронные хелперы ---
@@ -240,6 +265,7 @@ def run_card_update() -> List[str]:
     try:
         logs.append("[INFO] Этап 3: Поиск и скачивание недостающих изображений.")
         # `async_to_sync` для вызова асинхронной функции.
+        _apply_image_overrides(processed_card_ids)
         images_to_download = async_to_sync(_get_images_to_download_async)(
             processed_card_ids, all_cards_data
         )

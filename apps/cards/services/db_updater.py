@@ -13,6 +13,16 @@ from apps.cards.models import Card, Tag
 
 logger = logging.getLogger(__name__)
 
+# --- Настройки нормализации данных ---
+# Переопределения имён карт по идентификатору.
+NAME_OVERRIDES_BY_ID = {
+    1506: "Wanderer",  # Странник из API приходит с шаблонным именем
+}
+# Переопределения имён карт по исходному значению.
+NAME_OVERRIDES_BY_VALUE = {
+    "#{REALNAME[ID(1)|DELAYHANDLE(true)]}": "Wanderer",
+}
+
 # --- Константы ---
 # Источники данных для карт.
 GCG_DATA_URL = "https://api.hakush.in/gi/data/gcg.json"  # Полная база карт
@@ -24,6 +34,13 @@ IMAGE_DIR = settings.MEDIA_ROOT / 'card_images'
 
 
 # --- Асинхронные хелперы ---
+
+
+def _normalize_card_name(card_id: int, raw_name: str) -> str:
+    """Возвращает нормализованное имя карты."""
+    if card_id in NAME_OVERRIDES_BY_ID:
+        return NAME_OVERRIDES_BY_ID[card_id]
+    return NAME_OVERRIDES_BY_VALUE.get(raw_name, raw_name)
 
 async def _fetch_all_data_async() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Асинхронно получает все данные о картах и список новых карт."""
@@ -119,8 +136,10 @@ async def _db_operations_async(all_cards_data: Dict[str, Any], new_card_ids: Set
             related_card_map[card_id] = int(related_id)
 
         # Словарь с данными для создания/обновления.
+        normalized_name = _normalize_card_name(card_id, data['EN'])
+
         defaults = {
-            'card_type': data.get('type', 'Action'), 'name': data['EN'],
+            'card_type': data.get('type', 'Action'), 'name': normalized_name,
             'title': data.get('title', ''), 'description': data.get('desc', '').replace('\\n', '\n'),
             'cost_info': data.get('cost', []), 'hp': data.get('hp'),
             'is_new': card_id in new_card_ids,
